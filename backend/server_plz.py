@@ -100,20 +100,12 @@ def draw_detections(frame, detections):
     for detection in detections:
         x, y, w, h = detection.box
         label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
-        #    print("hello")
-        #    play_sound_effect("output.mp3")
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         cv2.rectangle(frame, (x, y - text_height - 10), (x + text_width, y), (0, 255, 0), -1)
         cv2.putText(frame, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
     return frame
-
-is_playing = False  # Global flag to track sound playback
-
-def play_sound_effect(sound_file):
-    playsound(sound_file, block=False)
-
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -138,7 +130,7 @@ def get_args():
     return parser.parse_args()
 
 last_capture_time = 0
-CAPTURE_INTERVAL = 5
+CAPTURE_INTERVAL = 10
 
 def save_image(frame):
     """Saves the frame as an image file."""
@@ -163,8 +155,10 @@ def get_frame():
             
              # Check if there are any detections and if enough time has passed
             if last_results and time.time() - last_capture_time > CAPTURE_INTERVAL:
-                save_image(frame)  # Save the image
-                last_capture_time = time.time()  # Update the last capture time
+                save_image(frame)
+                print("hello")
+                playsound("output.mp3", block=False)
+                last_capture_time = time.time()
 
             _, jpeg_frame = cv2.imencode('.jpg', frame)
             frame = jpeg_frame.tobytes()
