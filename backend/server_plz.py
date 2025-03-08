@@ -1,25 +1,20 @@
 import argparse
 import io
 import sys
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from functools import lru_cache
 from threading import Condition
 from playsound import playsound
-
 import cv2
 import numpy as np
-
+import time
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
-from picamera2 import MappedArray, Picamera2
+from picamera2 import Picamera2
 from picamera2.devices import IMX500
-from picamera2.devices.imx500 import (NetworkIntrinsics,
-                                      postprocess_nanodet_detection)
-import subprocess
-import os
-
+from picamera2.devices.imx500 import postprocess_nanodet_detection
 
 app = FastAPI()
 
@@ -30,8 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 
 last_detections = []
 
@@ -61,7 +54,7 @@ def parse_detections(metadata: dict):
     threshold = args.threshold
     iou = args.iou
     max_detections = args.max_detections
-
+    labels = get_labels()
     np_outputs = imx500.get_outputs(metadata, add_batch=True)
     input_w, input_h = imx500.get_input_size()
     if np_outputs is None:
@@ -85,7 +78,7 @@ def parse_detections(metadata: dict):
     last_detections = [
         Detection(box, category, score, metadata)
         for box, score, category in zip(boxes, scores, classes)
-        if score > threshold
+        if score > threshold and labels[int(category)] in ['bear', 'bird']
     ]
     return last_detections
 
@@ -107,16 +100,9 @@ def draw_detections(frame, detections):
     for detection in detections:
         x, y, w, h = detection.box
         label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
-        
-
-        #if labels[int(detection.category)] in ['person', 'cat', 'dog', 'bird']:
         #    print("hello")
         #    play_sound_effect("output.mp3")
-        
-        # Draw bounding box
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Draw label
         (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         cv2.rectangle(frame, (x, y - text_height - 10), (x + text_width, y), (0, 255, 0), -1)
         cv2.putText(frame, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
@@ -151,9 +137,19 @@ def get_args():
                         help="Print JSON network_intrinsics then exit")
     return parser.parse_args()
 
-import cProfile
+last_capture_time = 0
+CAPTURE_INTERVAL = 5
+
+def save_image(frame):
+    """Saves the frame as an image file."""
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    filename = f"detection_{timestamp}.jpg"
+    cv2.imwrite(filename, frame)
+    print(f"Image saved: {filename}")
 
 def get_frame():
+    global last_capture_time
+
     try:
         while True:
             with output.condition:
@@ -165,6 +161,11 @@ def get_frame():
             last_results = parse_detections(picam2.capture_metadata())
             frame = draw_detections(frame_np, last_results)
             
+             # Check if there are any detections and if enough time has passed
+            if last_results and time.time() - last_capture_time > CAPTURE_INTERVAL:
+                save_image(frame)  # Save the image
+                last_capture_time = time.time()  # Update the last capture time
+
             _, jpeg_frame = cv2.imencode('.jpg', frame)
             frame = jpeg_frame.tobytes()
             ret = b'--FRAME\r\n'
@@ -175,7 +176,6 @@ def get_frame():
             yield ret
     except Exception as e:
         pass
-cProfile.run('for _ in get_frame(): pass')
 
 @app.get('/mjpeg', response_class=StreamingResponse)
 def stream():
