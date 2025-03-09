@@ -1,13 +1,22 @@
+import signal
+import sys
+import atexit
+import logging
 from fastapi import FastAPI
+from animal import Animal
 from decode import decode_animals, decode_animal
-from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
+import datetime
+from datetime import datetime
+import base64
+import os.path
+import sqlite3
 import argparse
 import io
-from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from functools import lru_cache
-from threading import Condition
+from threading import Condition, Lock, Thread
 from playsound import playsound
 import cv2
 import numpy as np
@@ -18,28 +27,37 @@ from picamera2 import Picamera2
 from picamera2.devices import IMX500
 from picamera2.devices.imx500 import postprocess_nanodet_detection
 
-client = AsyncIOMotorClient('mongodb://localhost:27017')
-db = client.animals
-animals_collection = db.animals
+# Logging setup
+logging.basicConfig(level=logging.DEBUG)
+
+# SQLite setup
+conn = sqlite3.connect('animals.db', check_same_thread=False)
+cursor = conn.cursor()
+
+# Create table if it doesn't exist
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS animals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    image_data TEXT NOT NULL,
+    timestamp DATETIME NOT NULL
+)
+''')
+conn.commit()
 
 app = FastAPI()
 
-@app.get("/report")
-async def report():  # Make this function async
-    # Convert cursor to list asynchronously
-    cursor = animals_collection.find()
-    documents = await cursor.to_list(length=1000000)
-    return decode_animals(documents)
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins="http://localhost:8000",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 last_detections = []
+resource_lock = Lock()
+streaming_active = False  # Flag to control streaming loop
 
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
@@ -53,14 +71,11 @@ class StreamingOutput(io.BufferedIOBase):
 
 class Detection:
     def __init__(self, coords, category, conf, metadata):
-        """Create a Detection object, recording the bounding box, category and confidence."""
         self.category = category
         self.conf = conf
         self.box = imx500.convert_inference_coords(coords, metadata, picam2)
 
-
 def parse_detections(metadata: dict):
-    """Parse the output tensor into a number of detected objects, scaled to the ISP output."""
     global last_detections
     bbox_normalization = intrinsics.bbox_normalization
     bbox_order = intrinsics.bbox_order
@@ -95,7 +110,6 @@ def parse_detections(metadata: dict):
     ]
     return last_detections
 
-
 @lru_cache
 def get_labels():
     labels = intrinsics.labels
@@ -103,7 +117,6 @@ def get_labels():
     if intrinsics.ignore_dash_labels:
         labels = [label for label in labels if label and label != "-"]
     return labels
-
 
 def draw_detections(frame, detections):
     if detections is None:
@@ -145,12 +158,8 @@ def get_args():
 last_capture_time = 0
 CAPTURE_INTERVAL = 10
 
-def save_image(frame):
-    """Saves the frame as an image file."""
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"detection_{timestamp}.jpg"
-    cv2.imwrite(filename, frame)
-    print(f"Image saved: {filename}")
+def play_sound_non_blocking(sound_file):
+    Thread(target=playsound, args=(sound_file,), daemon=True).start()
 
 def get_frame():
     global last_capture_time
@@ -166,11 +175,16 @@ def get_frame():
             last_results = parse_detections(picam2.capture_metadata())
             frame = draw_detections(frame_np, last_results)
             
-             # Check if there are any detections and if enough time has passed
+            # Check if there are any detections and if enough time has passed
             if last_results and time.time() - last_capture_time > CAPTURE_INTERVAL:
-                save_image(frame)
+                _, buffer = cv2.imencode('.jpg', frame)
+                base64_data = base64.b64encode(buffer).decode('utf-8')
                 playsound("output.mp3", block=False)
                 last_capture_time = time.time()
+                animal = Animal(name='Lion', img=base64_data, timestamp=datetime.now())
+                print("hello")
+                # Schedule insert_animal to run in the event loop
+                insert_animal(animal)
 
             _, jpeg_frame = cv2.imencode('.jpg', frame)
             frame = jpeg_frame.tobytes()
@@ -181,7 +195,27 @@ def get_frame():
             ret += b'\r\n'
             yield ret
     except Exception as e:
-        pass
+        logging.error(f"Error in get_frame: {e}")
+
+@app.get("/report")
+async def report():
+    conn = sqlite3.connect('animals.db', check_same_thread=False)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM animals")
+        rows = cursor.fetchall()
+        documents = [dict(zip([column[0] for column in cursor.description], row)) for row in rows]
+        return decode_animals(documents)
+    finally:
+        conn.close()
+
+def insert_animal(animal: Animal):
+    with resource_lock:
+        cursor.execute('''
+        INSERT INTO animals (name, image_data, timestamp)
+        VALUES (?, ?, ?)
+        ''', (animal.name, animal.img, animal.timestamp))
+        conn.commit()
 
 @app.get('/video', response_class=StreamingResponse)
 def stream():
@@ -195,6 +229,15 @@ def stream():
         }
     )
     return response
+
+def cleanup():
+    global streaming_active
+    logging.debug("Cleaning up resources...")
+    streaming_active = False  # Stop the streaming loop
+    picam2.stop_recording()
+    conn.close()
+
+atexit.register(cleanup)
 
 if __name__ == "__main__":
     args = get_args()
@@ -216,7 +259,6 @@ if __name__ == "__main__":
         imx500.set_auto_aspect_ratio()
 
     last_results = None
-    #picam2.pre_callback = draw_detections
     
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
