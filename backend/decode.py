@@ -1,12 +1,12 @@
 from animal import Animal
 import datetime
 
-def decode_animal(row) -> Animal:
-    id, name, image_data, image_format, timestamp_str = row
-    
-    img_value = f"data:image/{image_format};base64,{image_data}"
-    
-    timestamp = datetime.datetime.fromisoformat(timestamp_str)
+def decode_animal(doc) -> Animal:
+    # For base64 encoded images
+    if "image_data" in doc:
+        img_value = f"data:image/jpeg;base64,{doc['image_data']}"
+    else:
+        img_value = "no-image"
     
     return Animal(
         name=name,
