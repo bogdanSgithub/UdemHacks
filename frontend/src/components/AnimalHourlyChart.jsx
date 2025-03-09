@@ -28,6 +28,9 @@ const AnimalHourlyChart = () => {
       });
   }, []);
 
+
+  
+
   const processDataByHour = (jsonData) => {
     // Initialize object to store hourly counts
     const hourCounts = {};

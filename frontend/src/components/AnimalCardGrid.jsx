@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { format } from 'date-fns';
 
+
 const ImageCardGrid = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ const ImageCardGrid = () => {
         setLoading(false);
       });
   }, []);
+
 
   if (loading) return <div className="text-center p-8 text-green-700">Loading agricultural data...</div>;
   if (error) return <div className="text-center p-8 text-red-600">Error: {error}</div>;
