@@ -78,7 +78,7 @@ def parse_detections(metadata: dict):
     last_detections = [
         Detection(box, category, score, metadata)
         for box, score, category in zip(boxes, scores, classes)
-        if score > threshold and labels[int(category)] in ['bear', 'bird']
+        if score > threshold and labels[int(category)] in ['squirrel', 'bird']
     ]
     return last_detections
 
@@ -156,7 +156,6 @@ def get_frame():
              # Check if there are any detections and if enough time has passed
             if last_results and time.time() - last_capture_time > CAPTURE_INTERVAL:
                 save_image(frame)
-                print("hello")
                 playsound("output.mp3", block=False)
                 last_capture_time = time.time()
 
@@ -171,7 +170,7 @@ def get_frame():
     except Exception as e:
         pass
 
-@app.get('/mjpeg', response_class=StreamingResponse)
+@app.get('/video', response_class=StreamingResponse)
 def stream():
     response = StreamingResponse(
         get_frame(),

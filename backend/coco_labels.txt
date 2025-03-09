@@ -20,7 +20,7 @@ horse
 sheep
 cow
 elephant
-bear
+squirrel
 zebra
 giraffe
 -
