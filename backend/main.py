@@ -1,264 +1,86 @@
-import signal
-import sys
-import atexit
-import logging
 from fastapi import FastAPI
 from animal import Animal
 from decode import decode_animals, decode_animal
 import asyncio
 import datetime
-from datetime import datetime
 import base64
 import os.path
 import sqlite3
-import argparse
-import io
-from fastapi.responses import StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-from functools import lru_cache
-from threading import Condition, Lock, Thread
-from playsound import playsound
-import cv2
-import numpy as np
-import time
-from picamera2.encoders import JpegEncoder
-from picamera2.outputs import FileOutput
-from picamera2 import Picamera2
-from picamera2.devices import IMX500
-from picamera2.devices.imx500 import postprocess_nanodet_detection
+import aiosqlite
 
-# Logging setup
-logging.basicConfig(level=logging.DEBUG)
+# SQLite database file
+DB_FILE = "animals.db"
 
-# SQLite setup
-conn = sqlite3.connect('animals.db', check_same_thread=False)
-cursor = conn.cursor()
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS animals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        image_data TEXT NOT NULL,
+        image_format TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+    )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database initialized successfully")
 
-# Create table if it doesn't exist
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS animals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    image_data TEXT NOT NULL,
-    timestamp DATETIME NOT NULL
-)
-''')
-conn.commit()
+init_db()
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-last_detections = []
-resource_lock = Lock()
-streaming_active = False  # Flag to control streaming loop
-
-class StreamingOutput(io.BufferedIOBase):
-    def __init__(self):
-        self.frame = None
-        self.condition = Condition()
-
-    def write(self, buf):
-        with self.condition:
-            self.frame = buf
-            self.condition.notify_all()
-
-class Detection:
-    def __init__(self, coords, category, conf, metadata):
-        self.category = category
-        self.conf = conf
-        self.box = imx500.convert_inference_coords(coords, metadata, picam2)
-
-def parse_detections(metadata: dict):
-    global last_detections
-    bbox_normalization = intrinsics.bbox_normalization
-    bbox_order = intrinsics.bbox_order
-    threshold = args.threshold
-    iou = args.iou
-    max_detections = args.max_detections
-    labels = get_labels()
-    np_outputs = imx500.get_outputs(metadata, add_batch=True)
-    input_w, input_h = imx500.get_input_size()
-    if np_outputs is None:
-        return last_detections
-    if intrinsics.postprocess == "nanodet":
-        boxes, scores, classes = \
-            postprocess_nanodet_detection(outputs=np_outputs[0], conf=threshold, iou_thres=iou,
-                                          max_out_dets=max_detections)[0]
-        from picamera2.devices.imx500.postprocess import scale_boxes
-        boxes = scale_boxes(boxes, 1, 1, input_h, input_w, False, False)
-    else:
-        boxes, scores, classes = np_outputs[0][0], np_outputs[1][0], np_outputs[2][0]
-        if bbox_normalization:
-            boxes = boxes / input_h
-
-        if bbox_order == "xy":
-            boxes = boxes[:, [1, 0, 3, 2]]
-        boxes = np.array_split(boxes, 4, axis=1)
-        boxes = zip(*boxes)
-
-    last_detections = [
-        Detection(box, category, score, metadata)
-        for box, score, category in zip(boxes, scores, classes)
-        if score > threshold and labels[int(category)] in ['squirrel', 'bird']
-    ]
-    return last_detections
-
-@lru_cache
-def get_labels():
-    labels = intrinsics.labels
-
-    if intrinsics.ignore_dash_labels:
-        labels = [label for label in labels if label and label != "-"]
-    return labels
-
-def draw_detections(frame, detections):
-    if detections is None:
-        return frame
-
-    labels = get_labels()  # Preload labels
-    for detection in detections:
-        x, y, w, h = detection.box
-        label = f"{labels[int(detection.category)]} ({detection.conf:.2f})"
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(frame, (x, y - text_height - 10), (x + text_width, y), (0, 255, 0), -1)
-        cv2.putText(frame, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-
-    return frame
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, help="Path of the model",
-                        default="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
-    parser.add_argument("--fps", type=int, help="Frames per second")
-    parser.add_argument("--bbox-normalization", action=argparse.BooleanOptionalAction, help="Normalize bbox")
-    parser.add_argument("--bbox-order", choices=["yx", "xy"], default="yx",
-                        help="Set bbox order yx -> (y0, x0, y1, x1) xy -> (x0, y0, x1, y1)")
-    parser.add_argument("--threshold", type=float, default=0.55, help="Detection threshold")
-    parser.add_argument("--iou", type=float, default=0.65, help="Set iou threshold")
-    parser.add_argument("--max-detections", type=int, default=10, help="Set max detections")
-    parser.add_argument("--ignore-dash-labels", action=argparse.BooleanOptionalAction, help="Remove '-' labels ")
-    parser.add_argument("--postprocess", choices=["", "nanodet"],
-                        default=None, help="Run post process of type")
-    parser.add_argument("-r", "--preserve-aspect-ratio", action=argparse.BooleanOptionalAction,
-                        help="preserve the pixel aspect ratio of the input tensor")
-    parser.add_argument("--labels", type=str,
-                        help="Path to the labels file")
-    parser.add_argument("--print-intrinsics", action="store_true",
-                        help="Print JSON network_intrinsics then exit")
-    return parser.parse_args()
-
-last_capture_time = 0
-CAPTURE_INTERVAL = 10
-
-def play_sound_non_blocking(sound_file):
-    Thread(target=playsound, args=(sound_file,), daemon=True).start()
-
-def get_frame():
-    global last_capture_time
-
-    try:
-        while True:
-            with output.condition:
-                output.condition.wait()
-                frame = output.frame
-            frame_np = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-
-            labels = get_labels()
-            last_results = parse_detections(picam2.capture_metadata())
-            frame = draw_detections(frame_np, last_results)
-            
-            # Check if there are any detections and if enough time has passed
-            if last_results and time.time() - last_capture_time > CAPTURE_INTERVAL:
-                _, buffer = cv2.imencode('.jpg', frame)
-                base64_data = base64.b64encode(buffer).decode('utf-8')
-                playsound("output.mp3", block=False)
-                last_capture_time = time.time()
-                animal = Animal(name='Lion', img=base64_data, timestamp=datetime.now())
-                print("hello")
-                # Schedule insert_animal to run in the event loop
-                insert_animal(animal)
-
-            _, jpeg_frame = cv2.imencode('.jpg', frame)
-            frame = jpeg_frame.tobytes()
-            ret = b'--FRAME\r\n'
-            ret += b'Content-Type: image/jpeg\r\n'
-            ret += f'Content-Length: {len(frame)}\r\n\r\n'.encode()
-            ret += frame
-            ret += b'\r\n'
-            yield ret
-    except Exception as e:
-        logging.error(f"Error in get_frame: {e}")
-
 @app.get("/report")
 async def report():
-    conn = sqlite3.connect('animals.db', check_same_thread=False)
-    cursor = conn.cursor()
+    async with aiosqlite.connect(DB_FILE) as db:
+        cursor = await db.execute(
+            "SELECT id, name, image_data, image_format, timestamp FROM animals ORDER BY timestamp DESC LIMIT 100"
+        )
+        rows = await cursor.fetchall()
+        return decode_animals(rows)
+
+async def insert_animal(animal: Animal):
+    with open(animal.img, "rb") as image_file:
+        binary_data = image_file.read()
+        base64_data = base64.b64encode(binary_data).decode('utf-8')
+    
+    file_extension = os.path.splitext(animal.img)[1].lower().strip('.')
+    
+    timestamp_str = animal.timestamp.isoformat()
+    
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute(
+            "INSERT INTO animals (name, image_data, image_format, timestamp) VALUES (?, ?, ?, ?)",
+            (animal.name, base64_data, file_extension, timestamp_str)
+        )
+        await db.commit()
+
+@app.on_event("startup")
+async def startup_db_client():
     try:
-        cursor.execute("SELECT * FROM animals")
-        rows = cursor.fetchall()
-        documents = [dict(zip([column[0] for column in cursor.description], row)) for row in rows]
-        return decode_animals(documents)
-    finally:
-        conn.close()
-
-def insert_animal(animal: Animal):
-    with resource_lock:
-        cursor.execute('''
-        INSERT INTO animals (name, image_data, timestamp)
-        VALUES (?, ?, ?)
-        ''', (animal.name, animal.img, animal.timestamp))
-        conn.commit()
-
-@app.get('/video', response_class=StreamingResponse)
-def stream():
-    response = StreamingResponse(
-        get_frame(),
-        headers={
-            'Age': '0',
-            'Cache-Control': 'no-cache, private',
-            'Pragma': 'no-cache',
-            'Content-Type': 'multipart/x-mixed-replace; boundary=FRAME'
-        }
-    )
-    return response
-
-def cleanup():
-    global streaming_active
-    logging.debug("Cleaning up resources...")
-    streaming_active = False  # Stop the streaming loop
-    picam2.stop_recording()
-    conn.close()
-
-atexit.register(cleanup)
+        # Check if we already have a test animal
+        async with aiosqlite.connect(DB_FILE) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM animals WHERE name = ?", ("bird",))
+            count = await cursor.fetchone()
+            
+            if count[0] == 0:
+                image_path = "./test_images/crow_eating_berry.jpg"
+                if not os.path.exists(image_path):
+                    print(f"Warning: Test image not found at {image_path}")
+                    return
+                
+                await insert_animal(Animal(
+                    name="bird", 
+                    img=image_path,
+                    timestamp=datetime.datetime.now()
+                ))
+                print("Test animal inserted successfully!")
+            else:
+                print("Test animal already exists in database")
+    except Exception as e:
+        print(f"Error during startup: {e}")
 
 if __name__ == "__main__":
-    args = get_args()
-    
-    imx500 = IMX500(args.model)
-    intrinsics = imx500.network_intrinsics
-
-    with open("coco_labels.txt", "r") as f:
-        intrinsics.labels = f.read().splitlines()
-
-    picam2 = Picamera2(imx500.camera_num)
-    config = picam2.create_preview_configuration(controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12)
-
-    imx500.show_network_fw_progress_bar()
-    output = StreamingOutput()
-    picam2.start_recording(JpegEncoder(), FileOutput(output))
-
-    if intrinsics.preserve_aspect_ratio:
-        imx500.set_auto_aspect_ratio()
-
-    last_results = None
-    
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8001)

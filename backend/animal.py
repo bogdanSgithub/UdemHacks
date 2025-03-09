@@ -3,5 +3,7 @@ import datetime
 
 class Animal(BaseModel):
     name: str
-    img: str  # This will now store the base64-encoded image data
+    img: str
     timestamp: datetime.datetime
+    
+    
