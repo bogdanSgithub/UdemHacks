@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { format } from "date-fns";
 
 const ImageCardGrid = () => {
   const [data, setData] = useState([]);
@@ -9,43 +15,61 @@ const ImageCardGrid = () => {
 
   useEffect(() => {
     // Fetch data from the HTTP endpoint
-    fetch('http://172.20.10.8:8000/report')
-      .then(response => {
+    fetch("http://192.168.84.25:8000/report")
+      .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to fetch data');
+          throw new Error("Failed to fetch data");
         }
         return response.json();
       })
-      .then(jsonData => {
+      .then((jsonData) => {
         // Sort by most recent timestamp and take top 6
-        const sortedData = [...jsonData].sort((a, b) =>
-          new Date(b.timestamp) - new Date(a.timestamp)
-        ).slice(0, 6);
+        const sortedData = [...jsonData]
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+          .slice(0, 6);
         setData(sortedData);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         setError(err.message);
         setLoading(false);
       });
   }, []);
 
-  if (loading) return <div className="text-center p-8 text-green-700">Loading agricultural data...</div>;
-  if (error) return <div className="text-center p-8 text-red-600">Error: {error}</div>;
-  if (!data || data.length === 0) return <div className="text-center p-8 text-green-700">No agricultural data available</div>;
+  if (loading)
+    return (
+      <div className="text-center p-8 text-green-700">
+        Loading agricultural data...
+      </div>
+    );
+  if (error)
+    return <div className="text-center p-8 text-red-600">Error: {error}</div>;
+  if (!data || data.length === 0)
+    return (
+      <div className="text-center p-8 text-green-700">
+        No agricultural data available
+      </div>
+    );
 
   return (
     <div className="container mx-auto p-4 mt-24">
-      <h1 className="text-3xl font-bold text-green-800 mb-6 text-center">Data Collection</h1>
+      <h1 className="text-3xl font-bold text-green-800 mb-6 text-center">
+        Data Collection
+      </h1>
       <div className="mb-4 text-green-700 font-medium text-center">
         Displaying top 6 most recent Animals
       </div>
       {/* Image Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {data.map((item, index) => (
-          <Card key={index} className="w-full aspect-square shadow-lg border-green-100 hover:shadow-xl transition-shadow duration-300 flex flex-col">
+          <Card
+            key={index}
+            className="w-full aspect-square shadow-lg border-green-100 hover:shadow-xl transition-shadow duration-300 flex flex-col"
+          >
             <CardHeader className="bg-green-50 border-b border-green-100">
-              <CardTitle className="text-xl font-bold text-green-700 capitalize">{item.name}</CardTitle>
+              <CardTitle className="text-xl font-bold text-green-700 capitalize">
+                {item.name}
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 flex-grow flex items-center justify-center">
               <div className="overflow-hidden rounded-md w-full aspect-square">
@@ -57,7 +81,7 @@ const ImageCardGrid = () => {
               </div>
             </CardContent>
             <CardFooter className="text-sm text-gray-600 bg-green-50 border-t border-green-100">
-              {format(new Date(item.timestamp), 'PPpp')}
+              {format(new Date(item.timestamp), "PPpp")}
             </CardFooter>
           </Card>
         ))}

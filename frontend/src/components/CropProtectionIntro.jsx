@@ -1,26 +1,43 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const CropProtectionIntro = () => {
+const EyeCropIntro = () => {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-6 py-10">
         <div className="flex justify-center">
           <div className="bg-green-100 p-4 rounded-full">
-            {/* Shield icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            {/* Camera icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-green-600"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
             </svg>
           </div>
         </div>
-        <h1 className="text-4xl font-bold text-green-800">Eye Crop</h1>
+        <h1 className="text-4xl font-bold text-green-800">EyeCrop</h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Protect your crops and vegetables from animals, birds, and other pests for better yields and healthier produce.
+          AI-powered protection for your homegrown fruits and vegetables from
+          birds, rodents, and other pests.
         </p>
-        <Button className="bg-green-600 hover:bg-green-700">Get Started</Button>
       </div>
 
       {/* Main Tabs */}
@@ -30,21 +47,32 @@ const CropProtectionIntro = () => {
           <TabsTrigger value="why">Why Use It</TabsTrigger>
           <TabsTrigger value="next">What's Next</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="how" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-green-700">
-                {/* Question mark icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                {/* Raspberry Pi icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2 h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                  <circle cx="9" cy="9" r="1"></circle>
+                  <circle cx="15" cy="9" r="1"></circle>
+                  <circle cx="9" cy="15" r="1"></circle>
+                  <circle cx="15" cy="15" r="1"></circle>
                 </svg>
-                How Eye Crop Works
+                How EyeCrop Works
               </CardTitle>
               <CardDescription>
-                Our innovative approach to crop protection
+                Our Raspberry Pi & AI-powered approach to crop protection
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -54,116 +82,204 @@ const CropProtectionIntro = () => {
                     <CardTitle className="text-lg">Detection</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">Advanced sensors detect animal movement and presence</p>
+                    <p className="text-gray-600">
+                      AI-powered camera detects birds and rodents in real-time
+                    </p>
                   </CardContent>
                 </Card>
-                
-                <Card className="border-green-100">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Analysis</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">AI identifies specific threats and their patterns</p>
-                  </CardContent>
-                </Card>
-                
+
                 <Card className="border-green-100">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Protection</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">Targeted deterrents activate to protect your crops</p>
+                    <p className="text-gray-600">
+                      System plays deterrent sounds when animals are detected
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-green-100">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Monitoring</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">
+                      Web app provides statistics and remote monitoring
+                      capabilities
+                    </p>
                   </CardContent>
                 </Card>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="why" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-green-700">
                 {/* Star icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2 h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                 </svg>
-                Why Use Eye Crop
+                Why Use EyeCrop
               </CardTitle>
-              <CardDescription>
-                Benefits of using our solution
-              </CardDescription>
+              <CardDescription>Benefits for home gardeners</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-700 mb-2">Increased Yield</h3>
-                  <p className="text-gray-600">Protect up to 90% of your crops from animal damage</p>
+                  <h3 className="font-semibold text-green-700 mb-2">
+                    Protect Your Harvest
+                  </h3>
+                  <p className="text-gray-600">
+                    Keep birds and rodents away from your raspberries and
+                    strawberries
+                  </p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-700 mb-2">Eco-Friendly</h3>
-                  <p className="text-gray-600">Non-harmful deterrents that respect wildlife</p>
+                  <h3 className="font-semibold text-green-700 mb-2">
+                    Affordable Solution
+                  </h3>
+                  <p className="text-gray-600">
+                    Built with accessible technology like Raspberry Pi
+                  </p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-700 mb-2">Cost-Effective</h3>
-                  <p className="text-gray-600">Save money on expensive fencing and repellents</p>
+                  <h3 className="font-semibold text-green-700 mb-2">
+                    Remote Monitoring
+                  </h3>
+                  <p className="text-gray-600">
+                    Track activity and view stats from anywhere via the web app
+                  </p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-700 mb-2">Data Insights</h3>
-                  <p className="text-gray-600">Learn about wildlife patterns in your area</p>
+                  <h3 className="font-semibold text-green-700 mb-2">
+                    Sustainable Gardening
+                  </h3>
+                  <p className="text-gray-600">
+                    Energy-efficient technology for eco-friendly pest control
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="next" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center text-green-700">
                 {/* Compass icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2 h-6 w-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
                 </svg>
-                What's Next
+                What's Next for EyeCrop
               </CardTitle>
-              <CardDescription>
-                Future developments and roadmap
-              </CardDescription>
+              <CardDescription>Future developments and roadmap</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center p-3 border-l-4 border-green-500 bg-green-50">
                   <div className="ml-2">
-                    <h3 className="font-medium text-green-800">Mobile App Integration</h3>
-                    <p className="text-sm text-gray-600">Get real-time alerts and control your system from anywhere</p>
+                    <h3 className="font-medium text-green-800">
+                      Mobile App Development
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      For even more convenient monitoring and control
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center p-3 border-l-4 border-green-500 bg-green-50">
                   <div className="ml-2">
-                    <h3 className="font-medium text-green-800">Species Recognition</h3>
-                    <p className="text-sm text-gray-600">Advanced AI to identify specific animal species</p>
+                    <h3 className="font-medium text-green-800">
+                      Expanded AI Models
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Detection of more types of animals and pests
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center p-3 border-l-4 border-green-500 bg-green-50">
                   <div className="ml-2">
-                    <h3 className="font-medium text-green-800">Weather Integration</h3>
-                    <p className="text-sm text-gray-600">Adaptive protection based on weather conditions</p>
+                    <h3 className="font-medium text-green-800">
+                      Weather & Crop Health Monitoring
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Integration with gardening conditions and plant health
+                      tracking
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center p-3 border-l-4 border-green-500 bg-green-50">
+                  <div className="ml-2">
+                    <h3 className="font-medium text-green-800">
+                      Community Partnerships
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Collaborating with local gardening communities
+                    </p>
                   </div>
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button className="w-full bg-green-600 hover:bg-green-700">
-                Join Our Waitlist
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Tech Stack Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-green-700">Built With</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              IMX500
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              JavaScript
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              Python
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              React
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              SQLite
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              Raspberry Pi
+            </span>
+            <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              3D Printing
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default CropProtectionIntro;
+export default EyeCropIntro;

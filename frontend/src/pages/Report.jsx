@@ -1,7 +1,8 @@
-import React from 'react'
-import AnimalCardGrid from '@/components/AnimalCardGrid'
-import AnimalHourlyChart from '@/components/AnimalHourlyChart'
-import AnimalWeeklyChart from '@/components/AnimalWeeklyChart'
+import React from "react";
+import AnimalCardGrid from "@/components/AnimalCardGrid";
+import AnimalHourlyChart from "@/components/AnimalHourlyChart";
+import AnimalWeeklyChart from "@/components/AnimalWeeklyChart";
+import EyeCropChatbot from "@/components/EyeCropChatbot";
 
 const Report = () => {
   return (
@@ -16,8 +17,10 @@ const Report = () => {
           <AnimalWeeklyChart />
         </div>
       </div>
-    </>
-  )
-}
 
-export default Report
+      <EyeCropChatbot />
+    </>
+  );
+};
+
+export default Report;
