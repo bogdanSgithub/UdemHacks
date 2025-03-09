@@ -5,28 +5,40 @@ import asyncio
 import datetime
 import base64
 import os.path
-from motor.motor_asyncio import AsyncIOMotorClient
-from fastapi.middleware.cors import CORSMiddleware
+import sqlite3
+import aiosqlite
 
-client = AsyncIOMotorClient('mongodb://localhost:27017')
-db = client.animals
-animals_collection = db.animals
+# SQLite database file
+DB_FILE = "animals.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS animals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        image_data TEXT NOT NULL,
+        image_format TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+    )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database initialized successfully")
+
+init_db()
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 @app.get("/report")
 async def report():
-    cursor = animals_collection.find()
-    documents = await cursor.to_list(length=100)
-    return decode_animals(documents)
+    async with aiosqlite.connect(DB_FILE) as db:
+        cursor = await db.execute(
+            "SELECT id, name, image_data, image_format, timestamp FROM animals ORDER BY timestamp DESC LIMIT 100"
+        )
+        rows = await cursor.fetchall()
+        return decode_animals(rows)
 
 async def insert_animal(animal: Animal):
     with open(animal.img, "rb") as image_file:
@@ -35,14 +47,39 @@ async def insert_animal(animal: Animal):
     
     file_extension = os.path.splitext(animal.img)[1].lower().strip('.')
     
-    animal_doc = {
-        "name": animal.name,
-        "image_data": base64_data,
-        "image_format": file_extension,
-        "timestamp": animal.timestamp
-    }
+    timestamp_str = animal.timestamp.isoformat()
     
-    await animals_collection.insert_one(animal_doc)
+    async with aiosqlite.connect(DB_FILE) as db:
+        await db.execute(
+            "INSERT INTO animals (name, image_data, image_format, timestamp) VALUES (?, ?, ?, ?)",
+            (animal.name, base64_data, file_extension, timestamp_str)
+        )
+        await db.commit()
+
+@app.on_event("startup")
+async def startup_db_client():
+    try:
+        # Check if we already have a test animal
+        async with aiosqlite.connect(DB_FILE) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM animals WHERE name = ?", ("bird",))
+            count = await cursor.fetchone()
+            
+            if count[0] == 0:
+                image_path = "./test_images/crow_eating_berry.jpg"
+                if not os.path.exists(image_path):
+                    print(f"Warning: Test image not found at {image_path}")
+                    return
+                
+                await insert_animal(Animal(
+                    name="bird", 
+                    img=image_path,
+                    timestamp=datetime.datetime.now()
+                ))
+                print("Test animal inserted successfully!")
+            else:
+                print("Test animal already exists in database")
+    except Exception as e:
+        print(f"Error during startup: {e}")
 
 if __name__ == "__main__":
     import uvicorn
