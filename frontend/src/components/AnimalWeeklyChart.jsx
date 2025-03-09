@@ -9,8 +9,8 @@ const AnimalWeeklyChart = () => {
   const [chartType, setChartType] = useState('line');
 
   useEffect(() => {
-    // Fetch data from the public directory
-    fetch('/animalData.json')
+    // Fetch data from the HTTP endpoint
+    fetch('http://172.20.10.8:8000/report')
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to fetch data');
